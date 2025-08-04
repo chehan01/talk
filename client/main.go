@@ -9,7 +9,7 @@ import (
 	"time"
 	"github.com/rivo/tview"
 	"github.com/gen2brain/beeep"
-)
+	"github.com/gdamore/tcell/v2"
 	"time"
 var conn *net.TCPConn
 var myName string
