@@ -3,16 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gdamore/tcell
 	"log/slog"
 	"net"
 	"time"
 	"github.com/rivo/tview"
-	"github.com/gdamore/tcell/v2"
-	"talk/common/consts"
-	"talk/common/model"
 	"github.com/gen2brain/beeep"
 )
-
+	"time"
 var conn *net.TCPConn
 var myName string
 
@@ -272,7 +270,7 @@ func handleConn() {
 		}
 		clear(buf)
 
-		// 使用 QueueUpdate 安全地更新 UI
+		// 使用 QueueUpdateDraw 安全地更新 UI
 		app.QueueUpdateDraw(func() {
 			addMessage("[green]"+chatMsg.MyName+"[white]", chatMsg.Data, chatMsg.SendTime)
 		})
