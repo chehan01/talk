@@ -3,14 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gdamore/tcell
+	"github.com/gdamore/tcell/v2"
+	"github.com/gen2brain/beeep"
+	"github.com/rivo/tview"
 	"log/slog"
 	"net"
+	"talk/common/consts"
+	"talk/common/model"
 	"time"
-	"github.com/rivo/tview"
-	"github.com/gen2brain/beeep"
-	"github.com/gdamore/tcell/v2"
-	"time"
+)
+
 var conn *net.TCPConn
 var myName string
 
