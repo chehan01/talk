@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gdamore/tcell/v2"
+	"github.com/gdamore/tcell/v2
 	"github.com/gen2brain/beeep"
 	"github.com/rivo/tview"
 	"log/slog"
@@ -25,11 +25,11 @@ var emojiVisible = false
 
 var emojis = [][]string{
 	{"😀", "😁", "😂", "😊", "😄", "😉", "😋", "😎", "😍", "😘", "🥰", "🥲", "😚", "🙂",
-		"🤗", "🤔", "🤨", "😐", "😑", "🤡", "🤥", "🙂", "🙂", "🤫", "🤭", "🫣", "🧐", "🤓", "👻", "💩", "🥳", "🥸"},
+		"🤗", "🤔", "🤨", "😐", "😑", "🤡", "🤥", "🙂", "🙂", "🤫", "🤭", "🫣", "🧐", "🤓", "🥳"},
 	{"🙄", "😏", "😣", "😥", "🤐", "😯", "😫", "🥱", "😴", "😌", "🤤", "😒", "😓", "😔",
-		"😕", "🫤", "🙃", "🫠", "😲", "🙁", "😖", "😞", "😟", "😤", "😢", "🥹", "😺", "🐰", "🐻", "🐽", "❤", "💔"},
+		"😕", "🫤", "🙃", "🫠", "😲", "🙁", "😖", "😞", "😟", "😤", "😢", "🥹", "😺", "💖", "💔"},
 	{"😭", "😦", "😧", "😨", "😩", "😬", "😮‍💨", "😰", "😱", "😳", "🤪", "😵", "😵‍💫", "🥴",
-		"😠", "😡", "🤬", "😷", "🤒", "🤕", "🤮", "🤧", "😇", "", "", "", "", "", "", "", "", ""},
+		"😠", "😡", "🤬", "😷", "🤒", "🤕", "🤮", "🤧", "🥸", "😇", "👻", "💩", "🐰", "🐻", "🐽"},
 }
 
 type emojiData struct {
@@ -53,6 +53,7 @@ func (e emojiData) GetColumnCount() int {
 }
 
 func main() {
+	beeep.AppName = "Talk"
 	var err error
 	slog.Info("开始连接服务器...")
 	for {
@@ -129,8 +130,7 @@ func main() {
 			Background(tcell.ColorBlue).
 			Foreground(tcell.ColorWhite)).
 		SetContent(emojiData{}).
-		SetFixed(len(emojis), len(emojis[0])).
-		SetBorders(true)
+		SetFixed(len(emojis), len(emojis[0]))
 
 	// 聊天区包含表情按钮和文本输入框
 	chatBox := tview.NewFlex().
@@ -149,7 +149,7 @@ func main() {
 			flex.RemoveItem(emojiTable)
 			emojiVisible = false
 		} else {
-			flex.AddItem(emojiTable, 7, 1, true)
+			flex.AddItem(emojiTable, 3, 1, true)
 			emojiVisible = true
 		}
 	})
