@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gdamore/tcell/v2
 	"github.com/gen2brain/beeep"
 	"github.com/rivo/tview"
 	"log/slog"
@@ -11,6 +10,7 @@ import (
 	"talk/common/consts"
 	"talk/common/model"
 	"time"
+	"github.com/gdamore/tcell/v2"
 )
 
 var conn *net.TCPConn
