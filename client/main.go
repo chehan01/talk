@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gen2brain/beeep"
 	"github.com/rivo/tview"
 	"log/slog"
@@ -11,6 +10,8 @@ import (
 	"talk/common/model"
 	"time"
 	"github.com/gdamore/tcell/v2"
+	"talk/common/protocol"
+	"os"
 )
 
 var conn *net.TCPConn
@@ -18,13 +19,17 @@ var myName string
 
 var app *tview.Application
 var messagesView *tview.TextView
+var msgViewTable *tview.Table
+
+// 添加全局行计数器
+var messageRow = 0
 var textArea *tview.TextArea
 var emojiButton *tview.Button
 var emojiTable *tview.Table
 var emojiVisible = false
 
 var emojis = [][]string{
-	{"😀", "😁", "😂", "😊", "😄", "😉", "😋", "😎", "😍", "😘", "🥰", "🥲", "😚", "🙂",
+	{"😊", "😁", "😂", "😀", "😄", "😉", "😋", "😎", "😍", "😘", "🥰", "🥲", "😚", "🙂",
 		"🤗", "🤔", "🤨", "😐", "😑", "🤡", "🤥", "🙂", "🙂", "🤫", "🤭", "🫣", "🧐", "🤓", "🥳"},
 	{"🙄", "😏", "😣", "😥", "🤐", "😯", "😫", "🥱", "😴", "😌", "🤤", "😒", "😓", "😔",
 		"😕", "🫤", "🙃", "🫠", "😲", "🙁", "😖", "😞", "😟", "😤", "😢", "🥹", "😺", "💖", "💔"},
@@ -54,11 +59,28 @@ func (e emojiData) GetColumnCount() int {
 
 func main() {
 	beeep.AppName = "Talk"
-	var err error
+
+	// 创建或打开日志文件
+	logFile, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		// 如果无法创建日志文件，可以考虑使用默认行为或其他处理方式
+		slog.Error("failed to open log file", "error", err)
+		return
+	}
+
+	defer logFile.Close()
+
+	// 创建使用文件作为输出的 slog handler
+	handler := slog.NewTextHandler(logFile, nil)
+	logger := slog.New(handler)
+
+	// 设置全局 logger（可选，如果不设置则需要在各处使用 logger 而不是 slog）
+	slog.SetDefault(logger)
+
 	slog.Info("开始连接服务器...")
 	for {
 		remoteAddr := net.TCPAddr{
-			IP:   net.ParseIP("serverIP"),
+			IP:   net.ParseIP("localhost"),
 			Port: 82,
 		}
 		conn, err = net.DialTCP("tcp", nil, &remoteAddr)
@@ -93,6 +115,12 @@ func main() {
 		SetDynamicColors(true).
 		SetScrollable(true)
 
+	msgViewTable = tview.NewTable().
+		SetSelectable(true, true).
+		SetSelectedStyle(tcell.StyleDefault.
+			Background(tcell.ColorNone).
+			Foreground(tcell.ColorNone))
+
 	// 创建消息输入区
 	// 替换 inputField 的创建
 	textArea = tview.NewTextArea().
@@ -104,10 +132,10 @@ func main() {
 		if event.Key() == tcell.KeyEnter {
 			msg := textArea.GetText()
 			if msg != "" {
-				sendTime := time.Now().Format("15:04")
-				err := sendMsg(msg, sendTime)
+				sendTime := time.Now().Format("01-02 15:04")
+				err = sendMsg(msg, sendTime)
 				if err != nil {
-					addMessage("[red]系统[white]", "发送失败: "+err.Error(), sendTime)
+					addMessage("SYSTEM", "发送失败: "+err.Error(), sendTime)
 				} else {
 					addMessage(myName, msg, sendTime)
 					textArea.SetText("", true)
@@ -140,7 +168,8 @@ func main() {
 	// 主布局
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(messagesView, 0, 1, false).
+		//AddItem(messagesView, 0, 1, false).
+		AddItem(msgViewTable, 0, 1, false).
 		AddItem(chatBox, 3, 1, false)
 
 	// 表情按钮点击处理
@@ -172,8 +201,8 @@ func main() {
 	})
 
 	list := tview.NewList().
-		AddItem("rabbit", "", 'r', nil).
-		AddItem("bear", "", 'b', nil).
+		AddItem("晗", "Miss Rabbit 最最最亲爱的宝贝兔兔", 'H', nil).
+		AddItem("勋", "", 'X', nil).
 		SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 			myName = mainText
 			textArea.SetTitle("[ " + mainText + " ]")
@@ -190,14 +219,30 @@ func main() {
 }
 
 func addMessage(sender, message, sendTime string) {
-	showStr := fmt.Sprintf("[ %s ] [#464142]%s[white] : %s\n", sender, sendTime, message)
+	// 消息
+	messageCell := tview.NewTableCell(message).SetExpansion(1)
+	// 发送者
+	senderCell := tview.NewTableCell("").SetExpansion(1)
 
-	_, err := messagesView.Write([]byte(showStr))
-	if err != nil {
-		slog.Error("write error", "error", err)
+	if sender == "SYSTEM" {
+		messageCell.SetTextColor(tcell.ColorRed).SetAlign(tview.AlignCenter)
+		msgViewTable.SetCell(messageRow, 0, messageCell)
+		messageRow++
 		return
+	} else if sender == myName {
+		senderCell.SetText("[#464142]" + sendTime + " [green]" + sender).SetAlign(tview.AlignRight)
+		messageCell.SetAlign(tview.AlignRight)
+	} else {
+		messageCell.SetAlign(tview.AlignLeft)
+		senderCell.SetText("[green]" + sender + " [#464142]" + sendTime)
 	}
-	messagesView.ScrollToEnd()
+
+	// 添加到表格
+	msgViewTable.SetCell(messageRow, 0, senderCell)
+	messageRow++
+
+	msgViewTable.SetCell(messageRow, 0, messageCell)
+	messageRow++
 }
 
 func login(name string) (err error) {
@@ -211,17 +256,20 @@ func login(name string) (err error) {
 		return
 	}
 
-	msg := model.Msg{
+	msgData := model.Msg{
 		Data:    loginData,
 		MsgType: consts.LoginMsgType,
 	}
 
-	msgData, err := json.Marshal(msg)
+	msg, err := json.Marshal(msgData)
 	if err != nil {
 		slog.Error("json marshal error", "error", err)
 		return
 	}
-	_, err = conn.Write(msgData)
+
+	finalMsg := protocol.Encoder(msg)
+
+	_, err = conn.Write(finalMsg)
 	return
 }
 
@@ -237,45 +285,49 @@ func sendMsg(data string, sendTime string) (err error) {
 		return
 	}
 
-	msg := model.Msg{
+	msgData := model.Msg{
 		Data:    chatData,
 		MsgType: consts.ChatMsgType,
 	}
 
-	msgData, err := json.Marshal(msg)
+	msg, err := json.Marshal(msgData)
 	if err != nil {
 		slog.Error("json marshal error", "error", err)
 		return
 	}
-	_, err = conn.Write(msgData)
+
+	finalMsg := protocol.Encoder(msg)
+
+	_, err = conn.Write(finalMsg)
 	return
 }
 
 func handleConn() {
-	buf := make([]byte, 1024)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			app.QueueUpdateDraw(func() {
-				addMessage("[red]系统[white]", "服务器故障，5秒后退出程序", "")
-			})
-			time.Sleep(5 * time.Second)
-			app.QueueUpdateDraw(func() {
-				app.Stop()
-			})
-		}
-		chatMsg := model.Chat{}
-		err = json.Unmarshal(buf[:n], &chatMsg)
-		if err != nil {
-			slog.Error("json unmarshal error", "error", err)
-			continue
-		}
-		clear(buf)
-
-		// 使用 QueueUpdateDraw 安全地更新 UI
+	err := protocol.Decoder(conn, handleMsg)
+	if err != nil {
 		app.QueueUpdateDraw(func() {
-			addMessage("[green]"+chatMsg.MyName+"[white]", chatMsg.Data, chatMsg.SendTime)
+			addMessage("SYSTEM", "服务器故障，5秒后退出程序", "")
 		})
-		_ = beeep.Notify("新消息", "请看消息哦~🤗", "")
+		time.Sleep(5 * time.Second)
+		app.QueueUpdateDraw(func() {
+			app.Stop()
+		})
 	}
+}
+
+func handleMsg(msgBytes []byte, conn net.Conn) {
+	chatMsg := model.Chat{}
+	err := json.Unmarshal(msgBytes, &chatMsg)
+	if err != nil {
+		slog.Error("json 反序列化消息错误", "error", err)
+		return
+	}
+
+	slog.Info("收到消息", "message", chatMsg)
+
+	// 使用 QueueUpdateDraw 安全地更新 UI
+	app.QueueUpdateDraw(func() {
+		addMessage(chatMsg.MyName, chatMsg.Data, chatMsg.SendTime)
+	})
+	_ = beeep.Notify("新消息", "请看消息哦~🤗", "")
 }
