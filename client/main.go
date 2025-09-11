@@ -27,12 +27,15 @@ var emojiTable *tview.Table
 var emojiVisible = false
 
 var emojis = [][]string{
-	{"😊", "😁", "😂", "😀", "😄", "😉", "😋", "😎", "😍", "😘", "🥰", "🥲", "😚", "🙂",
-		"🤗", "🤔", "🤨", "😐", "😑", "🤡", "🤥", "🙂", "🙂", "🤫", "🤭", "🫣", "🧐", "🤓", "🥳"},
-	{"🙄", "😏", "😣", "😥", "🤐", "😯", "😫", "🥱", "😴", "😌", "🤤", "😒", "😓", "😔",
-		"😕", "🫤", "🙃", "🫠", "😲", "🙁", "😖", "😞", "😟", "😤", "😢", "🥹", "😺", "💖", "💔"},
-	{"😭", "😦", "😧", "😨", "😩", "😬", "😮‍💨", "😰", "😱", "😳", "🤪", "😵", "😵‍💫", "🥴",
-		"😠", "😡", "🤬", "😷", "🤒", "🤕", "🤮", "🤧", "🥸", "😇", "👻", "💩", "🐰", "🐻", "🐽"},
+	{"😊", "😁", "😂", "😀", "😄", "😉", "😋", "😎", "😍", "😘"},
+	{"🥰", "🥲", "😚", "🙂", "🤗", "🤔", "🤨", "😐", "😑", "🤡"},
+	{"🤥", "🙂", "🙂", "🤫", "🤭", "🫣", "🧐", "🤓", "🥳", "🙄"},
+	{"😏", "😣", "😥", "🤐", "😯", "😫", "🥱", "😴", "😌", "🤤"},
+	{"😒", "😓", "😔", "😕", "🫤", "🙃", "🫠", "😲", "🙁", "😖"},
+	{"😞", "😟", "😤", "😢", "🥹", "😺", "💖", "💔", "😭", "😦"},
+	{"😧", "😨", "😩", "😬", "😮‍💨", "😰", "😱", "😳", "🤪", "😵"},
+	{"😵‍💫", "🥴", "😠", "😡", "🤬", "😷", "🤒", "🤕", "🤮", "🤧"},
+	{"🥸", "😇", "👻", "💩", "🐰", "🐻", "🐽", "", "", ""},
 }
 
 type emojiData struct {
@@ -89,7 +92,7 @@ func main() {
 	// 在创建 tview.Application 之前设置 tCell 的字符集
 	tcell.SetEncodingFallback(tcell.EncodingFallbackUTF8)
 	// 创建app
-	app = tview.NewApplication()
+	app = tview.NewApplication().SetTitle("Talk")
 
 	msgViewTable = tview.NewTable().
 		SetSelectable(true, true).
@@ -97,12 +100,15 @@ func main() {
 			Background(tcell.ColorNone).
 			Foreground(tcell.ColorNone))
 
+	msgViewTable.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+
 	// 创建消息输入区
 	// 替换 inputField 的创建
 	textArea = tview.NewTextArea().
-		SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorBlack))
+		SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.NewHexColor(0xf5f5f5)))
+	textArea.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
 	textArea.SetBorder(true).SetBorderColor(tcell.ColorDimGrey).
-		SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorDimGrey)
+		SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorBlack)
 	// 添加按键处理
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
@@ -125,7 +131,7 @@ func main() {
 	// 创建表情按钮和表情表格
 	emojiButton = tview.NewButton("😊").
 		SetStyle(tcell.StyleDefault.
-			Background(tcell.ColorBlack).
+			Background(tcell.NewHexColor(0xf5f5f5)).
 			Foreground(tcell.ColorBlack))
 	// 创建表格
 	emojiTable = tview.NewTable().
@@ -133,13 +139,15 @@ func main() {
 		SetSelectedStyle(tcell.StyleDefault.
 			Background(tcell.ColorBlue).
 			Foreground(tcell.ColorWhite)).
-		SetContent(emojiData{}).
-		SetFixed(len(emojis), len(emojis[0]))
+		SetContent(emojiData{})
+	emojiTable.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
 
 	// 聊天区包含表情按钮和文本输入框
 	chatBox := tview.NewFlex().
 		AddItem(emojiButton, 3, 1, false).
 		AddItem(textArea, 0, 1, true)
+	chatBox.SetBorderColor(tcell.NewHexColor(0xf5f5f5))
+	chatBox.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
 
 	// 主布局
 	flex := tview.NewFlex().
@@ -147,14 +155,17 @@ func main() {
 		//AddItem(messagesView, 0, 1, false).
 		AddItem(msgViewTable, 0, 1, false).
 		AddItem(chatBox, 3, 1, false)
+	flex.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
 
 	// 表情按钮点击处理
 	emojiButton.SetSelectedFunc(func() {
 		if emojiVisible {
 			flex.RemoveItem(emojiTable)
+			app.SetFocus(textArea)
 			emojiVisible = false
 		} else {
 			flex.AddItem(emojiTable, 3, 1, true)
+			app.SetFocus(emojiTable)
 			emojiVisible = true
 		}
 	})
@@ -196,7 +207,7 @@ func main() {
 
 func addMessage(sender, message, sendTime string) {
 	// 消息
-	messageCell := tview.NewTableCell(message).SetExpansion(1)
+	messageCell := tview.NewTableCell(message).SetExpansion(1).SetTextColor(tcell.ColorBlack)
 	// 发送者
 	senderCell := tview.NewTableCell("").SetExpansion(1)
 
