@@ -101,10 +101,7 @@ func handleMsg(msgBytes []byte, conn net.Conn) {
 			return
 		}
 
-		sendMsg(chatSt.Data, chatSt.SendTime, chatSt.MyName, toConn)
-
-		_, _ = toConn.Write(protocol.Encoder(msg.Data))
-
+		sendMsg(chatSt.MyName, chatSt.SendTime, chatSt.Data, toConn)
 	default:
 	}
 }

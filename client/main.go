@@ -4,21 +4,19 @@ import (
 	"encoding/json"
 	"github.com/gen2brain/beeep"
 	"github.com/rivo/tview"
-	"log/slog"
 	"net"
 	"talk/common/consts"
 	"talk/common/model"
 	"time"
 	"github.com/gdamore/tcell/v2"
 	"talk/common/protocol"
-	"os"
+	"talk/common/log"
 )
 
 var conn *net.TCPConn
 var myName string
 
 var app *tview.Application
-var messagesView *tview.TextView
 var msgViewTable *tview.Table
 
 // 添加全局行计数器
@@ -59,48 +57,31 @@ func (e emojiData) GetColumnCount() int {
 
 func main() {
 	beeep.AppName = "Talk"
-
-	// 创建或打开日志文件
-	logFile, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		// 如果无法创建日志文件，可以考虑使用默认行为或其他处理方式
-		slog.Error("failed to open log file", "error", err)
-		return
-	}
-
-	defer logFile.Close()
-
-	// 创建使用文件作为输出的 slog handler
-	handler := slog.NewTextHandler(logFile, nil)
-	logger := slog.New(handler)
-
-	// 设置全局 logger（可选，如果不设置则需要在各处使用 logger 而不是 slog）
-	slog.SetDefault(logger)
-
-	slog.Info("开始连接服务器...")
+	var err error
+	log.Info("开始连接服务器...")
 	for {
 		remoteAddr := net.TCPAddr{
-			IP:   net.ParseIP("localhost"),
+			IP:   net.ParseIP("ServerIP"),
 			Port: 82,
 		}
 		conn, err = net.DialTCP("tcp", nil, &remoteAddr)
 
 		if err != nil {
-			slog.Error("连接服务端失败", "error", err)
-			slog.Info("3秒后重连...")
+			log.Error("连接服务端失败", "error", err)
+			log.Info("3秒后重连...")
 			time.Sleep(3 * time.Second)
 			continue
 		}
 		err = conn.SetKeepAlive(true)
 		if err != nil {
-			slog.Error("设置 KeepAlive 失败", "error", err)
+			log.Error("设置 KeepAlive 失败", "error", err)
 		}
 		// 设置Keep-Alive探测间隔（可选）
 		err = conn.SetKeepAlivePeriod(30 * time.Second)
 		if err != nil {
-			slog.Error("设置Keep-Alive周期失败", "error", err)
+			log.Error("设置Keep-Alive周期失败", "error", err)
 		}
-		slog.Info("连接服务端成功")
+		log.Info("连接服务端成功")
 		break
 	}
 	go handleConn()
@@ -109,11 +90,6 @@ func main() {
 	tcell.SetEncodingFallback(tcell.EncodingFallbackUTF8)
 	// 创建app
 	app = tview.NewApplication()
-
-	// 创建消息展示区
-	messagesView = tview.NewTextView().
-		SetDynamicColors(true).
-		SetScrollable(true)
 
 	msgViewTable = tview.NewTable().
 		SetSelectable(true, true).
@@ -252,7 +228,7 @@ func login(name string) (err error) {
 
 	loginData, err := json.Marshal(loginMsg)
 	if err != nil {
-		slog.Error("json marshal error", "error", err)
+		log.Error("json marshal error", "error", err)
 		return
 	}
 
@@ -263,7 +239,7 @@ func login(name string) (err error) {
 
 	msg, err := json.Marshal(msgData)
 	if err != nil {
-		slog.Error("json marshal error", "error", err)
+		log.Error("json marshal error", "error", err)
 		return
 	}
 
@@ -281,7 +257,7 @@ func sendMsg(data string, sendTime string) (err error) {
 	}
 	chatData, err := json.Marshal(chatMsg)
 	if err != nil {
-		slog.Error("json marshal error", "error", err)
+		log.Error("json marshal error", "error", err)
 		return
 	}
 
@@ -292,13 +268,11 @@ func sendMsg(data string, sendTime string) (err error) {
 
 	msg, err := json.Marshal(msgData)
 	if err != nil {
-		slog.Error("json marshal error", "error", err)
+		log.Error("json marshal error", "error", err)
 		return
 	}
 
-	finalMsg := protocol.Encoder(msg)
-
-	_, err = conn.Write(finalMsg)
+	_, err = conn.Write(protocol.Encoder(msg))
 	return
 }
 
@@ -319,15 +293,15 @@ func handleMsg(msgBytes []byte, conn net.Conn) {
 	chatMsg := model.Chat{}
 	err := json.Unmarshal(msgBytes, &chatMsg)
 	if err != nil {
-		slog.Error("json 反序列化消息错误", "error", err)
+		log.Error("json 反序列化消息错误", "error", err)
 		return
 	}
-
-	slog.Info("收到消息", "message", chatMsg)
 
 	// 使用 QueueUpdateDraw 安全地更新 UI
 	app.QueueUpdateDraw(func() {
 		addMessage(chatMsg.MyName, chatMsg.Data, chatMsg.SendTime)
 	})
-	_ = beeep.Notify("新消息", "请看消息哦~🤗", "")
+	if chatMsg.MyName != "SYSTEM" {
+		_ = beeep.Notify("新消息", "请看消息哦~🤗", "")
+	}
 }
