@@ -26,6 +26,8 @@ var emojiButton *tview.Button
 var emojiTable *tview.Table
 var emojiVisible = false
 
+var globalColor = tcell.NewHexColor(0xEDEDED)
+
 var emojis = [][]string{
 	{"😊", "😁", "😂", "😀", "😄", "😉", "😋", "😎", "😍", "😘"},
 	{"🥰", "🥲", "😚", "🙂", "🤗", "🤔", "🤨", "😐", "😑", "🤡"},
@@ -64,7 +66,7 @@ func main() {
 	log.Info("开始连接服务器...")
 	for {
 		remoteAddr := net.TCPAddr{
-			IP:   net.ParseIP("ServerIP"),
+			IP:   net.ParseIP("localhost"),
 			Port: 82,
 		}
 		conn, err = net.DialTCP("tcp", nil, &remoteAddr)
@@ -100,13 +102,13 @@ func main() {
 			Background(tcell.ColorNone).
 			Foreground(tcell.ColorNone))
 
-	msgViewTable.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+	msgViewTable.SetBackgroundColor(globalColor)
 
 	// 创建消息输入区
 	// 替换 inputField 的创建
 	textArea = tview.NewTextArea().
-		SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(tcell.NewHexColor(0xf5f5f5)))
-	textArea.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+		SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorBlack).Background(globalColor))
+	textArea.SetBackgroundColor(globalColor)
 	textArea.SetBorder(true).SetBorderColor(tcell.ColorDimGrey).
 		SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorBlack)
 	// 添加按键处理
@@ -131,7 +133,7 @@ func main() {
 	// 创建表情按钮和表情表格
 	emojiButton = tview.NewButton("😊").
 		SetStyle(tcell.StyleDefault.
-			Background(tcell.NewHexColor(0xf5f5f5)).
+			Background(globalColor).
 			Foreground(tcell.ColorBlack))
 	// 创建表格
 	emojiTable = tview.NewTable().
@@ -140,14 +142,14 @@ func main() {
 			Background(tcell.ColorBlue).
 			Foreground(tcell.ColorWhite)).
 		SetContent(emojiData{})
-	emojiTable.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+	emojiTable.SetBackgroundColor(globalColor)
 
 	// 聊天区包含表情按钮和文本输入框
 	chatBox := tview.NewFlex().
 		AddItem(emojiButton, 3, 1, false).
 		AddItem(textArea, 0, 1, true)
-	chatBox.SetBorderColor(tcell.NewHexColor(0xf5f5f5))
-	chatBox.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+	chatBox.SetBorderColor(globalColor)
+	chatBox.SetBackgroundColor(globalColor)
 
 	// 主布局
 	flex := tview.NewFlex().
@@ -155,7 +157,7 @@ func main() {
 		//AddItem(messagesView, 0, 1, false).
 		AddItem(msgViewTable, 0, 1, false).
 		AddItem(chatBox, 3, 1, false)
-	flex.SetBackgroundColor(tcell.NewHexColor(0xf5f5f5))
+	flex.SetBackgroundColor(globalColor)
 
 	// 表情按钮点击处理
 	emojiButton.SetSelectedFunc(func() {
@@ -207,9 +209,13 @@ func main() {
 
 func addMessage(sender, message, sendTime string) {
 	// 消息
-	messageCell := tview.NewTableCell(message).SetExpansion(1).SetTextColor(tcell.ColorBlack)
+	messageCell := tview.NewTableCell(message).SetExpansion(1).
+		SetTextColor(tcell.NewHexColor(0x000000)).
+		SetSelectable(false)
 	// 发送者
-	senderCell := tview.NewTableCell("").SetExpansion(1)
+	senderCell := tview.NewTableCell("").SetExpansion(1).SetSelectable(false)
+
+	emptyCell := tview.NewTableCell("").SetExpansion(1).SetSelectable(false)
 
 	if sender == "SYSTEM" {
 		messageCell.SetTextColor(tcell.ColorRed).SetAlign(tview.AlignCenter)
@@ -218,10 +224,10 @@ func addMessage(sender, message, sendTime string) {
 		return
 	} else if sender == myName {
 		senderCell.SetText("[#464142]" + sendTime + " [green]" + sender).SetAlign(tview.AlignRight)
-		messageCell.SetAlign(tview.AlignRight)
+		messageCell.SetAlign(tview.AlignRight).SetBackgroundColor(tcell.NewHexColor(0xFFFFFF))
 	} else {
-		messageCell.SetAlign(tview.AlignLeft)
 		senderCell.SetText("[green]" + sender + " [#464142]" + sendTime)
+		messageCell.SetAlign(tview.AlignLeft).SetBackgroundColor(tcell.NewHexColor(0xFFFFFF))
 	}
 
 	// 添加到表格
@@ -229,6 +235,9 @@ func addMessage(sender, message, sendTime string) {
 	messageRow++
 
 	msgViewTable.SetCell(messageRow, 0, messageCell)
+	messageRow++
+
+	msgViewTable.SetCell(messageRow, 0, emptyCell)
 	messageRow++
 }
 
@@ -300,7 +309,7 @@ func handleConn() {
 	}
 }
 
-func handleMsg(msgBytes []byte, conn net.Conn) {
+func handleMsg(msgBytes []byte, _ net.Conn) {
 	chatMsg := model.Chat{}
 	err := json.Unmarshal(msgBytes, &chatMsg)
 	if err != nil {
