@@ -2,15 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gdamore/tcell/v2"
 	"github.com/gen2brain/beeep"
 	"github.com/rivo/tview"
 	"net"
 	"talk/common/consts"
-	"talk/common/model"
-	"time"
-	"github.com/gdamore/tcell/v2"
-	"talk/common/protocol"
 	"talk/common/log"
+	"talk/common/model"
+	"talk/common/protocol"
+	"time"
 )
 
 var conn *net.TCPConn
